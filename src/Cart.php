@@ -154,6 +154,52 @@ class Cart
 
         return $cartItem;
     }
+    
+   /**
+     * Update the cart item with the given rowId.
+     *
+     * @param string $rowId
+     * @param mixed $price
+     * @return \Gloudemans\Shoppingcart\CartItem
+     */
+
+    public function updatePrice($rowId, $price)
+    {
+
+        $cartItem = $this->get($rowId);
+
+        if ($price instanceof Buyable) {
+            $cartItem->updateFromBuyable($price);
+        } elseif (is_array($price)) {
+            $cartItem->updateFromArray($price);
+        } else {
+            $cartItem->price = $price;
+        }
+
+        $content = $this->getContent();
+
+        if ($rowId !== $cartItem->rowId) {
+            $content->pull($rowId);
+
+            if ($content->has($cartItem->rowId)) {
+                // $existingCartItem = $this->get($cartItem->rowId);
+                $cartItem->price($cartItem->price);
+            }
+        }
+
+        if ($cartItem->price <= 0) {
+            $this->remove($cartItem->rowId);
+            return;
+        } else {
+            $content->put($cartItem->rowId, $cartItem);
+        }
+
+        $this->events->dispatch('cart.updated', $cartItem);
+
+        $this->session->put($this->instance, $content);
+
+        return $cartItem;
+    }
 
     /**
      * Remove the cart item with the given rowId from the cart.
